@@ -72,5 +72,5 @@ Update your system and enable the correct hardware settings.
 ---
 
 ## Notes
-- Tested on Raspberry Pi OS (Bookworm/Bullseye).
+- Test I2C with i2cdetect -y 1
 - Make sure your Pi has I2C enabled before running.
