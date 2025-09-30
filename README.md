@@ -7,11 +7,8 @@ A simple guide to set up and run the Spectrometer GUI on a Raspberry Pi.
 ## Quick start (clone and run)
 
 ```bash
-# Replace <your-repo-url> with your repository URL
-git clone <your-repo-url>
-cd <your-repo-folder>
-python3 -m venv venv
-source venv/bin/activate
+git clone https://github.com/EvansCode123/TARTA_GUI.git
+cd TARTA_GUI
 pip install -r requirements.txt --break-system-packages
 python3 main.py
 ```
