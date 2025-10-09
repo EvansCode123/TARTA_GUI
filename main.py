@@ -13,6 +13,7 @@ import shutil
 import psutil
 import sys
 import socket
+import subprocess
 
 # --- RPi specific imports ---
 try:
@@ -52,6 +53,38 @@ def load_config():
         sys.exit(1)
 
 config = load_config()
+
+# --- Start ASEQ Spectrometer as separate process ---
+def start_spectrometer_process():
+    """Start the ASEQ spectrometer script as a separate process"""
+    try:
+        # Check if aseq_spectrometer.py exists
+        if os.path.exists('aseq_spectrometer.py'):
+            # Start the spectrometer script as a subprocess
+            spectrometer_process = subprocess.Popen(
+                [sys.executable, 'aseq_spectrometer.py'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            
+            # Create a thread to monitor its output
+            def monitor_spectrometer_output():
+                for line in spectrometer_process.stdout:
+                    print(f"[SPECTROMETER] {line.strip()}")
+            
+            monitor_thread = threading.Thread(target=monitor_spectrometer_output, daemon=True)
+            monitor_thread.start()
+            
+            print("ASEQ Spectrometer process started successfully")
+            return spectrometer_process
+        else:
+            print("WARNING: aseq_spectrometer.py not found. Spectrometer features disabled.")
+            return None
+    except Exception as e:
+        print(f"Failed to start spectrometer process: {e}")
+        return None
 
 # --- RTC Helper Functions (using lgpio) ---
 def bcd_to_dec(bcd):
@@ -338,8 +371,6 @@ class RPIController:
             
             time.sleep(1)
 
-
-
     def run_hourly_monitoring_sequence(self):
         """
         Starts an hourly cycle immediately, unless there are 5 minutes or less left in the hour.
@@ -437,6 +468,9 @@ def get_rtc_time_str():
 eel.init('web')
 rpi_controller = RPIController()
 
+# Start the spectrometer process
+spectrometer_process = start_spectrometer_process()
+
 @eel.expose
 def close_app():
     sys.exit(0)
@@ -500,6 +534,16 @@ if __name__ == '__main__':
     except (SystemExit, MemoryError, KeyboardInterrupt):
         print("UI closed, shutting down application.")
     finally:
+        # Clean up
         rpi_controller.abort_operation()
         rpi_controller.cleanup()
+        
+        # Terminate spectrometer process if it exists
+        if spectrometer_process:
+            try:
+                spectrometer_process.terminate()
+                spectrometer_process.wait(timeout=5)
+            except:
+                spectrometer_process.kill()
+        
         print("Application has been shut down.")
